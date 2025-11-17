@@ -99,8 +99,43 @@ bool Connection::receive(Message &msg) {
   // TODO: receive a message, storing its tag and data in msg
   // return true if successful, false if not
   // make sure that m_last_result is set appropriately
-  
 
+  if (!is_open()) {
+    m_last_result = EOF_OR_ERROR;
+    return false;
+  }
 
+  //A message must be a single line of text with no newline characters contained within it.
+  // need to use the rio_readlineb
+  // ssize_t	rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen);
+
+  size_t maxlen = Message::MAX_LEN + 1;
+  char* usrbuf = new char[maxlen]; //c string has null terminator too so need +1
+
+  ssize_t n_read = rio_readlineb(&m_fdbuf, usrbuf, maxlen);
+
+  if (n_read <= 0) {
+    m_last_result = EOF_OR_ERROR; //EOF for 0 and error for -1
+    return false;
+  }
+
+  std::string line(usrbuf);
+
+  //buffer looks like "tag:data\n\0"
+  while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) {
+    line.pop_back();
+  }
+
+  //split the line into tag and data
+  size_t colon_pos = line.find(':');
+  if (colon_pos == std::string::npos) {
+    m_last_result = INVALID_MSG;
+    return false;
+  }
+
+  msg.tag = line.substr(0, colon_pos);
+  msg.data = line.substr(colon_pos + 1);
   
+  m_last_result = SUCCESS;
+  return true;
 }
