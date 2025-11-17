@@ -13,5 +13,7 @@ std::string rtrim(const std::string &s);
 std::string trim(const std::string &s);
 
 // you can add additional declarations here...
+std::vector<std::string> split(const std::string& str, char delimiter);
+
 
 #endif // CLIENT_UTIL_H

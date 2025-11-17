@@ -13,7 +13,7 @@ struct ParsedDelivery {
   std::string sender;
   std::string message;
   bool valid = false;
-}
+};
 
 
 
@@ -121,9 +121,9 @@ int main(int argc, char **argv) {
     }
 
     if (delivery.tag == TAG_DELIVERY) {
-      ParsedDelivery delivery = parse_delivery_payload(delivery_msg.data);
-      if (delivery.valid) {
-        std::cout << delivery.sender << ": " << delivery.message << "\n";
+      ParsedDelivery parsed = parse_delivery_payload(delivery.data);
+      if (parsed.valid) {
+        std::cout << parsed.sender << ": " << parsed.message << "\n";
       } else {
         std::cerr << "Error: Failed to parse delivery message payload\n";
       }

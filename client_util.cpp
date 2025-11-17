@@ -22,3 +22,20 @@ std::string rtrim(const std::string &s) {
 std::string trim(const std::string &s) {
   return rtrim(ltrim(s));
 }
+
+std::vector<std::string> split(const std::string& str, char delimiter) {
+  std::vector<std::string> parts;
+  std::string current;
+  
+  for (char c : str) {
+      if (c == delimiter) {
+          parts.push_back(current);
+          current.clear();
+      } else {
+          current += c;
+      }
+  }
+  parts.push_back(current); // Add the last part
+  
+  return parts;
+}
