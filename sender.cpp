@@ -246,27 +246,28 @@ int main(int argc, char **argv) {
       std::string command, argument;
       if (parse_command(user_input, command, argument)) {
         if (command == "/join") {
+
           handle_join_command(conn, argument, current_room);
+        } 
+        else if (command == "/leave") {
+          handle_leave_command(conn, current_room);
         }
-      }
-
-       
-      else if (command == "/leave") {
-        handle_leave_command(conn, current_room);
-
+        else if (command == "/quit") {
+          handle_quit_command(conn, should_quit);
+        } 
+        else {
+          std::cerr << "Error: Unknown command '" << command << "'\n";
+          std::cerr << "Valid commands: /join, /leave, /quit\n";
+        }
       } 
-      else if (command == "/quit") {
-        handle_quit_command(conn, should_quit);
+      else {
+        std::cerr << "Error: Invalid command format\n";
       }
-
     } 
     else {
-      //reg msg
+      // regular message
       handle_send_message(conn, current_room, user_input);
-
     }
-
-
   }
 
 
