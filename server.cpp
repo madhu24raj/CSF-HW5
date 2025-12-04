@@ -54,15 +54,32 @@ Server::Server(int port)
   : m_port(port)
   , m_ssock(-1) {
   // TODO: initialize mutex
+  pthread_mutex_init(&m_lock, nullptr);
 }
 
 Server::~Server() {
   // TODO: destroy mutex
+  pthread_mutex_destroy(&m_lock);
+  for (std::pair<std::string, Room*> &p: m_rooms) {
+    delete p.second;
+  }
+  if (m_ssock >= 0) {
+    close(m_ssock);
+  }
 }
 
 bool Server::listen() {
   // TODO: use open_listenfd to create the server socket, return true
   //       if successful, false if not
+  std::string port_str = std::to_string(m_port);
+  const char* port_cstr = port_str.c_str();
+  m_ssock = open_listenfd(port_cstr);
+  if (m_ssock < 0) {
+    return false;
+  }
+  return true;
+
+  
 }
 
 void Server::handle_client_requests() {
