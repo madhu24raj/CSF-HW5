@@ -47,6 +47,9 @@ void *worker(void *arg) {
 
   Message login; 
   if (!conn.receive(login)) {
+    if (conn.get_last_result() == Connection::INVALID_MSG) {
+      conn.send(Message(TAG_ERR, "invalid message format"));
+    }
     return nullptr;
   }
 
@@ -164,6 +167,9 @@ void Server::receiver_chat(Connection &conn, const std::string &username) {
 
   Message msg;
   if (!conn.receive(msg)) {
+    if (conn.get_last_result() == Connection::INVALID_MSG) {
+      conn.send(Message(TAG_ERR, "invalid message format"));
+    }
     delete user;
     return;
   }
@@ -224,6 +230,12 @@ void Server::send_chat(Connection &conn, const std::string &username) {
     // check if we receive message
     if (!conn.receive(msg)) {
       // check if current room exists so we can remove the user
+      if (conn.get_last_result() == Connection::INVALID_MSG) {
+        conn.send(Message(TAG_ERR, "invalid message format"));
+        continue; // dont disconnect, go back to start of loop
+      }
+
+
       if (curr_room) {
         curr_room->remove_member(user);
       }
