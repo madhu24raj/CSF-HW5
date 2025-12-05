@@ -67,9 +67,10 @@ void *worker(void *arg) {
   //       separate helper functions for each of these possibilities
   //       is a good idea)
   if (login.tag == TAG_SLOGIN) {
-    server->receiver_chat(conn, username);
-  } else {
     server->send_chat(conn, username);
+    
+  } else {
+    server->receiver_chat(conn, username);
   }
 
   return nullptr;
