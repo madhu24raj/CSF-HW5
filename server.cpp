@@ -50,7 +50,7 @@ void *worker(void *arg) {
     return nullptr;
   }
 
-  std::stringer username = conn.data;
+  std::string username = login.data;
 
   if (login.tag != TAG_SLOGIN && login.tag != TAG_RLOGIN) {
     Message error_msg = Message(TAG_ERR, "invalid login");
@@ -67,13 +67,14 @@ void *worker(void *arg) {
   //       separate helper functions for each of these possibilities
   //       is a good idea)
   if (login.tag == TAG_SLOGIN) {
-    pass;
+    return;
   } else {
-    pass;
+    return;
   }
 
   return nullptr;
 }
+
 
 }
 
@@ -121,4 +122,56 @@ void Server::handle_client_requests() {
 Room *Server::find_or_create_room(const std::string &room_name) {
   // TODO: return a pointer to the unique Room object representing
   //       the named chat room, creating a new one if necessary
+  pthread_mutex_lock(&m_lock);
+  for (std::pair<const std::string, Room*> &p: m_rooms) {
+    Room* room = p.second;
+    if (room->get_room_name() == room_name) {
+      pthread_mutex_unlock(&m_lock);
+      return room;
+    }
+  }
+  Room* room = new Room(room_name);
+  pthread_mutex_unlock(&m_lock);
+  return room;
+
+}
+
+void Server::receiver_chat(Connection &conn, const std::string &username) {
+  User* user = new User(username);
+  Room* curr_room = nullptr;
+  Message msg;
+  if (!conn.receive(msg)) {
+    delete user;
+    return;
+  }
+  if (msg.tag != TAG_JOIN) {
+    Message error_msg = Message(TAG_ERR, "expected join");
+    conn.send(error_msg);
+  }
+  std::string room_name = msg.data;
+  Room* room = find_or_create_room(room_name);
+  room->add_member(user);
+  curr_room = room;
+  Message accepted_msg = Message(TAG_OK, "joined");
+  conn.send(accepted_msg);
+  while (1) {
+    // gets new message
+    Message *new_msg = user->mqueue.dequeue();
+    if (new_msg == nullptr) {
+      continue;
+    }
+    // send to receiver
+    bool result = conn.send(*new_msg);
+    delete new_msg;
+    // receiver send failed
+    if (!result) {
+      // check if current room to remove
+      if (curr_room) {
+        curr_room->remove_member(user);
+      }
+      delete user;
+      return;
+    }
+  }
+
 }
