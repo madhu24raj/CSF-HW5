@@ -69,7 +69,7 @@ void *worker(void *arg) {
   if (login.tag == TAG_SLOGIN) {
     server->receiver_chat(conn, username);
   } else {
-    return;
+    server->send_chat(conn, username);
   }
 
   return nullptr;
@@ -194,6 +194,7 @@ void Server::send_chat(Connection &conn, const std::string &username) {
       if (curr_room) {
         curr_room->remove_member(user);
       }
+      delete user;
       return;
     }
 
@@ -220,6 +221,12 @@ void Server::send_chat(Connection &conn, const std::string &username) {
         conn.send(error_msg);
         continue;
       }
+      // remove member if current room exists
+      curr_room->remove_member(user);
+      curr_room = nullptr;
+      Message accepted_msg = Message(TAG_OK, "left");
+      conn.send(accepted_msg);
+
     }
 
     // check for sendall to users
@@ -241,13 +248,14 @@ void Server::send_chat(Connection &conn, const std::string &username) {
 
     // check for sender wanting to quit
     if (msg.tag == TAG_QUIT) {
+      Message accepted_msg = Message(TAG_OK, "bye");
+      conn.send(accepted_msg);
       // remove user from room if exists
       if (curr_room) {
         curr_room->remove_member(user);
       }
       delete user;
-      Message accepted_msg = Message(TAG_OK, "bye");
-      conn.send(accepted_msg);
+    
       return;
     }
 
