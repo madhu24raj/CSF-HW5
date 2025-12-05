@@ -53,12 +53,12 @@ void *worker(void *arg) {
   std::string username = login.data;
 
   if (login.tag != TAG_SLOGIN && login.tag != TAG_RLOGIN) {
-    Message error_msg = Message(TAG_ERR, "invalid login");
+    Message error_msg = Message(TAG_ERR, "invalid message format");
     conn.send(error_msg);
     return nullptr;
   }
 
-  Message accepted_msg = Message(TAG_OK, "login successful");
+  Message accepted_msg = Message(TAG_OK, "logged in as " + username);
   conn.send(accepted_msg);
 
 
@@ -160,22 +160,37 @@ Room *Server::find_or_create_room(const std::string &room_name) {
 void Server::receiver_chat(Connection &conn, const std::string &username) {
   User* user = new User(username);
   Room* curr_room = nullptr;
+
+
   Message msg;
   if (!conn.receive(msg)) {
     delete user;
     return;
   }
-  if (msg.tag != TAG_JOIN) {
-    Message error_msg = Message(TAG_ERR, "expected join");
+
+  // empty response
+  if (msg.tag.empty()) {
+    Message error_msg = Message(TAG_ERR, "invalid message format");
     conn.send(error_msg);
     delete user;
     return;
   }
+
+  // incorrect tag
+  if (msg.tag != TAG_JOIN) {
+    Message error_msg = Message(TAG_ERR, "expected join message, received " + msg.tag);
+    conn.send(error_msg);
+    delete user;
+    return;
+  }
+
+  // collect room name
   std::string room_name = msg.data;
   Room* room = find_or_create_room(room_name);
+  // add member into room
   room->add_member(user);
   curr_room = room;
-  Message accepted_msg = Message(TAG_OK, "joined");
+  Message accepted_msg = Message(TAG_OK,  "joined room " + room_name);
   conn.send(accepted_msg);
   while (1) {
     // gets new message
@@ -203,6 +218,7 @@ void Server::send_chat(Connection &conn, const std::string &username) {
   User* user = new User(username);
   Room* curr_room = nullptr;
 
+  Message accepted_msg = Message(TAG_OK, "logged in as " + username);
   while (1) {
     Message msg;
     // check if we receive message
@@ -215,7 +231,6 @@ void Server::send_chat(Connection &conn, const std::string &username) {
       return;
     }
 
-
     // check for join
     if (msg.tag == TAG_JOIN) {
       std::string room_name = msg.data;
@@ -226,7 +241,7 @@ void Server::send_chat(Connection &conn, const std::string &username) {
       // join new room
       curr_room = find_or_create_room(room_name);
       curr_room->add_member(user);
-      Message accepted_msg = Message(TAG_OK, "joined");
+      Message accepted_msg = Message(TAG_OK, "joined room " + room_name);
       conn.send(accepted_msg);
       continue;
     }
@@ -241,8 +256,9 @@ void Server::send_chat(Connection &conn, const std::string &username) {
       }
       // remove member if current room exists
       curr_room->remove_member(user);
+      std::string name_left = curr_room->get_room_name();
       curr_room = nullptr;
-      Message accepted_msg = Message(TAG_OK, "left");
+      Message accepted_msg = Message(TAG_OK, "left room " + name_left);
       conn.send(accepted_msg);
       continue;
     }
@@ -257,7 +273,7 @@ void Server::send_chat(Connection &conn, const std::string &username) {
       } else {
         // broadcast send message
         curr_room->broadcast_message(username, msg.data);
-        Message accepted_msg = Message(TAG_OK,"sent");
+        Message accepted_msg = Message(TAG_OK,"message sent");
         conn.send(accepted_msg);
         continue;
       }
@@ -266,7 +282,7 @@ void Server::send_chat(Connection &conn, const std::string &username) {
 
     // check for sender wanting to quit
     if (msg.tag == TAG_QUIT) {
-      Message accepted_msg = Message(TAG_OK, "bye");
+      Message accepted_msg = Message(TAG_OK, "bye!");
       conn.send(accepted_msg);
       // remove user from room if exists
       if (curr_room) {
@@ -278,7 +294,7 @@ void Server::send_chat(Connection &conn, const std::string &username) {
     }
 
     // some unknown error
-    Message unknown_err = Message(TAG_ERR, "invalid command");
+    Message unknown_err = Message(TAG_ERR, "invalid message tag");
     conn.send(unknown_err);
   }
 }

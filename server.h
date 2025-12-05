@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <pthread.h>
+#include "connection.h"
 class Room;
 
 class Server {
