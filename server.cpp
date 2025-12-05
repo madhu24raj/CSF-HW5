@@ -67,7 +67,7 @@ void *worker(void *arg) {
   //       separate helper functions for each of these possibilities
   //       is a good idea)
   if (login.tag == TAG_SLOGIN) {
-    return;
+    server->receiver_chat(conn, username);
   } else {
     return;
   }
@@ -123,14 +123,20 @@ Room *Server::find_or_create_room(const std::string &room_name) {
   // TODO: return a pointer to the unique Room object representing
   //       the named chat room, creating a new one if necessary
   pthread_mutex_lock(&m_lock);
-  for (std::pair<const std::string, Room*> &p: m_rooms) {
+  // look to see if room exists
+  for (const std::pair<const std::string, Room*> &p: m_rooms) {
     Room* room = p.second;
+    // if found, unlock and return
     if (room->get_room_name() == room_name) {
       pthread_mutex_unlock(&m_lock);
       return room;
     }
   }
+  // create new room
   Room* room = new Room(room_name);
+  // add new room to the RoomMap
+  m_rooms[room_name] = room;
+  // unlock
   pthread_mutex_unlock(&m_lock);
   return room;
 
@@ -174,4 +180,76 @@ void Server::receiver_chat(Connection &conn, const std::string &username) {
     }
   }
 
+}
+
+void Server::send_chat(Connection &conn, const std::string &username) {
+  User* user = new User(username);
+  Room* curr_room = nullptr;
+
+  while (1) {
+    Message msg;
+    // check if we receive message
+    if (!conn.receive(msg)) {
+      // check if current room exists so we can remove the user
+      if (curr_room) {
+        curr_room->remove_member(user);
+      }
+      return;
+    }
+
+    // check for join
+    if (msg.tag == TAG_JOIN) {
+      std::string room_name = msg.data;
+      // leave current room if exists
+      if (curr_room) {
+        curr_room->remove_member(user);
+      }
+      // join new room
+      curr_room = find_or_create_room(room_name);
+      curr_room->add_member(user);
+    }
+
+    // check for leave
+    if (msg.tag == TAG_LEAVE) {
+      // check if not in a room 
+      if (!curr_room) {
+        Message error_msg = Message(TAG_ERR, "not in a room");
+        conn.send(error_msg);
+        continue;
+      }
+    }
+
+    // check for sendall to users
+    if (msg.tag == TAG_SENDALL) {
+      // check if not in a room
+      if (!curr_room) {
+        Message error_msg = Message(TAG_ERR, "not in a room");
+        conn.send(error_msg);
+        continue;
+      } else {
+        // broadcast send message
+        curr_room->broadcast_message(username, msg.data);
+        Message accepted_msg = Message(TAG_OK,"sent");
+        conn.send(accepted_msg);
+        continue;
+      }
+
+    }
+
+    // check for sender wanting to quit
+    if (msg.tag == TAG_QUIT) {
+      // remove user from room if exists
+      if (curr_room) {
+        curr_room->remove_member(user);
+      }
+      delete user;
+      Message accepted_msg = Message(TAG_OK, "bye");
+      conn.send(accepted_msg);
+      return;
+    }
+
+    // some unknown error
+    Message unknown_err = Message(TAG_ERR, "invalid command");
+    conn.send(unknown_err);
+  }
 }
