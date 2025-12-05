@@ -20,6 +20,11 @@
 // TODO: add any additional data types that might be helpful
 //       for implementing the Server member functions
 
+struct workerValues {
+  Server* server;
+  int client_fd;
+};
+
 ////////////////////////////////////////////////////////////////////////
 // Client thread functions
 ////////////////////////////////////////////////////////////////////////
@@ -32,14 +37,40 @@ void *worker(void *arg) {
   // TODO: use a static cast to convert arg from a void* to
   //       whatever pointer type describes the object(s) needed
   //       to communicate with a client (sender or receiver)
-
+  workerValues* args = static_cast<workerValues*>(arg);
+  Server* server = args->server;
+  int client_fd = args->client_fd;
+  delete args;
   // TODO: read login message (should be tagged either with
   //       TAG_SLOGIN or TAG_RLOGIN), send response
+  Connection conn(client_fd);
+
+  Message login; 
+  if (!conn.receive(login)) {
+    return nullptr;
+  }
+
+  std::stringer username = conn.data;
+
+  if (login.tag != TAG_SLOGIN && login.tag != TAG_RLOGIN) {
+    Message error_msg = Message(TAG_ERR, "invalid login");
+    conn.send(error_msg);
+    return nullptr;
+  }
+
+  Message accepted_msg = Message(TAG_OK, "login successful");
+  conn.send(accepted_msg);
+
 
   // TODO: depending on whether the client logged in as a sender or
   //       receiver, communicate with the client (implementing
   //       separate helper functions for each of these possibilities
   //       is a good idea)
+  if (login.tag == TAG_SLOGIN) {
+    pass;
+  } else {
+    pass;
+  }
 
   return nullptr;
 }
@@ -60,7 +91,7 @@ Server::Server(int port)
 Server::~Server() {
   // TODO: destroy mutex
   pthread_mutex_destroy(&m_lock);
-  for (std::pair<std::string, Room*> &p: m_rooms) {
+  for (std::pair<const std::string, Room*> &p: m_rooms) {
     delete p.second;
   }
   if (m_ssock >= 0) {
