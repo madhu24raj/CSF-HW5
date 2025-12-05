@@ -117,6 +117,20 @@ bool Server::listen() {
 void Server::handle_client_requests() {
   // TODO: infinite loop calling accept or Accept, starting a new
   //       pthread for each connected client
+  while (1) {
+    int client_fd = accept(m_ssock, NULL, NULL);
+    if (client_fd < 0) {
+      continue;
+    }
+
+    // asign values to struct
+    workerValues* args = new workerValues;
+    args->server = this;
+    args->client_fd = client_fd;
+
+    pthread_t client_thread;
+    pthread_create(&client_thread, NULL, worker, args);
+  }
 }
 
 Room *Server::find_or_create_room(const std::string &room_name) {
