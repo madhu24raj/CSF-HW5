@@ -118,7 +118,7 @@ void Server::handle_client_requests() {
   // TODO: infinite loop calling accept or Accept, starting a new
   //       pthread for each connected client
   while (1) {
-    int client_fd = accept(m_ssock, NULL, NULL);
+    int client_fd = Accept(m_ssock, NULL, NULL);
     if (client_fd < 0) {
       continue;
     }
@@ -167,6 +167,8 @@ void Server::receiver_chat(Connection &conn, const std::string &username) {
   if (msg.tag != TAG_JOIN) {
     Message error_msg = Message(TAG_ERR, "expected join");
     conn.send(error_msg);
+    delete user;
+    return;
   }
   std::string room_name = msg.data;
   Room* room = find_or_create_room(room_name);
@@ -212,6 +214,7 @@ void Server::send_chat(Connection &conn, const std::string &username) {
       return;
     }
 
+
     // check for join
     if (msg.tag == TAG_JOIN) {
       std::string room_name = msg.data;
@@ -240,7 +243,7 @@ void Server::send_chat(Connection &conn, const std::string &username) {
       curr_room = nullptr;
       Message accepted_msg = Message(TAG_OK, "left");
       conn.send(accepted_msg);
-
+      continue;
     }
 
     // check for sendall to users
