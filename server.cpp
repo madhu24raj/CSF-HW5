@@ -207,6 +207,9 @@ void Server::send_chat(Connection &conn, const std::string &username) {
       // join new room
       curr_room = find_or_create_room(room_name);
       curr_room->add_member(user);
+      Message accepted_msg = Message(TAG_OK, "joined");
+      conn.send(accepted_msg);
+      continue;
     }
 
     // check for leave
